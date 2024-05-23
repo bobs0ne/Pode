@@ -40,8 +40,9 @@
          "SERVICE_1C_NAME" = $SERVICE_1C_NAME; "CNTX_PATH" = $CNTX_PATH; "PFL_PATH" = $PFL_PATH; "message" = $message; "services" = $sdata}
     }
 
+    # route to restart 1c with clean tmp
     Add-PodeRoute -Method Get -Path '/restart' -Authentication 'WinAuth' -ScriptBlock {
-        # get vars for reastart
+        # get vars for restart
         $SERVICE_1C_NAME = $WebEvent.Query["SERVICE_1C_NAME"]
         $SERVICE_RAS_NAME = $WebEvent.Query["SERVICE_RAS_NAME"]
         $LOG_FILE = $WebEvent.Query["LOG_FILE"]
@@ -80,5 +81,4 @@
         #Complete restarting
         Move-PodeResponseUrl -Url '/restart-1c'
     }
-
 }
