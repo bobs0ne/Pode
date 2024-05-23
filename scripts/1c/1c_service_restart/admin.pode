@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <title>Pode - Главная страница</title>
+        <!--- Стили, чтобы у таблицы отображались границы --->
+		<style>
+			table, th, td {
+			  border: 1px solid black;
+			  border-collapse: collapse;
+			  padding: 7px;
+			}
+		</style>
+    </head>
+    <body>
+		<a href="/ping">Ping</a>
+		<br>
+		<a href="/restart-1c">Рестарт сервера 1C с очисткой временных файлов.</a>
+    </body>
+</html>
