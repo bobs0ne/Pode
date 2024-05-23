@@ -26,7 +26,7 @@
     Add-PodeRoute -Method Get -Path '/admin' -Authentication 'WinAuth' -ScriptBlock {Write-PodeViewResponse -Path 'admin'}
 
     Add-PodeRoute -Method Get -Path '/restart-1c' -Authentication 'WinAuth' -ScriptBlock {
-        $settings = Import-Csv "C:\scripts\Pode\settings.csv" -Delimiter ";"
+        $settings = Import-Csv "$PSScriptRoot\settings.csv" -Delimiter ";"
         $LOG_FILE = $settings.LOG_FILE
         $SERVICE_1C_NAME = $settings.SERVICE_1C_NAME
         $SERVICE_RAS_NAME = $settings.SERVICE_RAS_NAME
