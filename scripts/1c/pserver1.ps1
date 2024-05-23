@@ -15,16 +15,15 @@
     #limits
     Add-PodeLimitRule -Type IP -Values all -Limit 10 -Seconds 60
     
-###################
-
-
 ################### endpoints
 
-    #ping
+    # ping
     Add-PodeRoute -Method Get -Path '/ping' -ScriptBlock {Write-PodeJsonResponse -Value @{'value' = 'pong'}}
-    #main page
+    
+    # main page
     Add-PodeRoute -Method Get -Path '/admin' -Authentication 'WinAuth' -ScriptBlock {Write-PodeViewResponse -Path 'admin'}
 
+    # 1c-restart page
     Add-PodeRoute -Method Get -Path '/restart-1c' -Authentication 'WinAuth' -ScriptBlock {
         $settings = Import-Csv "$PSScriptRoot\settings.csv" -Delimiter ";"
         $LOG_FILE = $settings.LOG_FILE
@@ -42,13 +41,14 @@
     }
 
     Add-PodeRoute -Method Get -Path '/restart' -Authentication 'WinAuth' -ScriptBlock {
+        # get vars for reastart
         $SERVICE_1C_NAME = $WebEvent.Query["SERVICE_1C_NAME"]
         $SERVICE_RAS_NAME = $WebEvent.Query["SERVICE_RAS_NAME"]
         $LOG_FILE = $WebEvent.Query["LOG_FILE"]
         $TEMP_PATH = $WebEvent.Query["TEMP_PATH"]
         $CNTX_PATH = $WebEvent.Query["CNTX_PATH"]
         $PFL_PATH = $WebEvent.Query["PFL_PATH"]
-
+        # save vars to file
         $settings = Import-Csv "C:\scripts\Pode\settings.csv" -Delimiter ";"
         $settings.SERVICE_1C_NAME = $SERVICE_1C_NAME
         $settings.SERVICE_RAS_NAME = $SERVICE_RAS_NAME
@@ -57,41 +57,28 @@
         $settings.CNTX_PATH = $CNTX_PATH
         $settings.PFL_PATH = $PFL_PATH
         $settings | Export-Csv "C:\scripts\Pode\settings.csv" -Encoding utf8 -NoTypeInformation -Delimiter ";"
-        #Restart
+        #start restarting
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "stop  $(Get-Date)"
-
         Stop-Service -Name $SERVICE_1C_NAME
         Stop-Service -Name $SERVICE_RAS_NAME
-
         Start-Sleep -Seconds 5
-
         taskkill /f /im "rphost.exe"
         taskkill /f /im "rmngr.exe"
         taskkill /f /im "ragent.exe"
         taskkill /f /im "ras.exe"
-
         Start-Sleep -Seconds 5
-
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "done stop  $(Get-Date)"
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "clean temp $(Get-Date)"
-
         Get-ChildItem $CNTX_PATH -Recurse -Include "snccntx*"  | Remove-Item -Recurse -Force -Confirm:$false
         Get-ChildItem $PFL_PATH -Recurse -Include "*.pfl" | Remove-Item -Force
         Get-ChildItem $TEMP_PATH -Recurse -Include "*.*" -Exclude $LOG_FILE | Remove-Item -Force
-
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "done clean temp  $(Get-Date)"
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "start $(Get-Date)"
-
         Start-Service -Name $SERVICE_1C_NAME
         Start-Service -Name $SERVICE_RAS_NAME
-
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "Service $SERVICE_1C_NAME restarted at $(Get-Date)"
-        Write-Host "Restart Complete!"
-        #/Restart
+        #Complete restarting
         Move-PodeResponseUrl -Url '/restart-1c'
     }
-    
-    Add-PodeRoute -Method Get -Path '/info' -Authentication 'WinAuth' -ScriptBlock {
-        Write-Host $WebEvent.Auth.User.Username
-    }
+
 }
