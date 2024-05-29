@@ -1,14 +1,16 @@
-﻿Start-PodeServer {
+Import-Module -Name ActiveDirectory
+$ad_groups = @('<your-ad-group>')
+
+Start-PodeServer {
 ################### start
     Add-PodeEndpoint -Address * -Port 8080 -Protocol Http
 ################### settings
     #enable http views
     Set-PodeViewEngine -Type Pode
     
-    Import-Module -Name ActiveDirectory
     #auth
     Enable-PodeSessionMiddleware -Duration 120 -Extend
-    New-PodeAuthScheme -Basic | Add-PodeAuthWindowsAd -Name 'WinAuth' -Groups @('<YOUR_AD_GROUP>')
+    New-PodeAuthScheme -Form | Add-PodeAuthWindowsAd -Name 'WinAuth' -Groups $ad_groups -FailureUrl 'login' -SuccessUrl '/admin' 
     #logging
     New-PodeLoggingMethod -File -Name 'requests' -Path "$PSScriptRoot\logs" -MaxDays 30 -MaxSize 10MB | Enable-PodeRequestLogging
     New-PodeLoggingMethod -File -Name 'error' -Path "$PSScriptRoot\logs" -MaxDays 30 -MaxSize 10MB | Enable-PodeErrorLogging
@@ -17,47 +19,45 @@
     
 ################### endpoints
 
+    Set-PodeState -Name '1cdata' -Value @{ } | Out-Null
+
     # ping
     Add-PodeRoute -Method Get -Path '/ping' -ScriptBlock {Write-PodeJsonResponse -Value @{'value' = 'pong'}}
     
     # main page
     Add-PodeRoute -Method Get -Path '/admin' -Authentication 'WinAuth' -ScriptBlock {Write-PodeViewResponse -Path 'admin'}
-
+    
     # 1c-restart page
     Add-PodeRoute -Method Get -Path '/restart-1c' -Authentication 'WinAuth' -ScriptBlock {
-        $settings = Import-Csv "$PSScriptRoot\settings.csv" -Delimiter ";"
-        $LOG_FILE = $settings.LOG_FILE
-        $SERVICE_1C_NAME = $settings.SERVICE_1C_NAME
-        $SERVICE_RAS_NAME = $settings.SERVICE_RAS_NAME
-        $CNTX_PATH = $settings.CNTX_PATH
-        $PFL_PATH = $settings.PFL_PATH 
-        $TEMP_PATH = $settings.TEMP_PATH
-        
-        $services = $SERVICE_1C_NAME, $SERVICE_RAS_NAME
+        $value = ""
+        Lock-PodeObject -ScriptBlock {Restore-PodeState -Path './1cstate.json'}
+        $value = (Get-PodeState -Name '1cdata')
+
+        $services = $value."SERVICE_1C_NAME", $value."SERVICE_RAS_NAME"
         $sdata = Get-Service $services
                        
-        Write-PodeViewResponse -Path 'restart-1c' -Data @{ "LOG_FILE" = $LOG_FILE; "TEMP_PATH" = $TEMP_PATH; "SERVICE_RAS_NAME" = $SERVICE_RAS_NAME;
-         "SERVICE_1C_NAME" = $SERVICE_1C_NAME; "CNTX_PATH" = $CNTX_PATH; "PFL_PATH" = $PFL_PATH; "message" = $message; "services" = $sdata}
+        Write-PodeViewResponse -Path 'restart-1c' -Data @{ "LOG_FILE" = $value."LOG_FILE"; "TEMP_PATH" = $value."TEMP_PATH"; "SERVICE_RAS_NAME" = $value."SERVICE_RAS_NAME";
+         "SERVICE_1C_NAME" = $value."SERVICE_1C_NAME"; "CNTX_PATH" = $value."CNTX_PATH"; "PFL_PATH" = $value."PFL_PATH"; "message" = $message; "services" = $sdata}
     }
 
     # route to restart 1c with clean tmp
     Add-PodeRoute -Method Get -Path '/restart' -Authentication 'WinAuth' -ScriptBlock {
-        # get vars for restart
+        #get settings from web
+        $LOG_FILE = $WebEvent.Query["LOG_FILE"]
         $SERVICE_1C_NAME = $WebEvent.Query["SERVICE_1C_NAME"]
         $SERVICE_RAS_NAME = $WebEvent.Query["SERVICE_RAS_NAME"]
-        $LOG_FILE = $WebEvent.Query["LOG_FILE"]
         $TEMP_PATH = $WebEvent.Query["TEMP_PATH"]
         $CNTX_PATH = $WebEvent.Query["CNTX_PATH"]
         $PFL_PATH = $WebEvent.Query["PFL_PATH"]
-        # save vars to file
-        $settings = Import-Csv "C:\scripts\Pode\settings.csv" -Delimiter ";"
-        $settings.SERVICE_1C_NAME = $SERVICE_1C_NAME
-        $settings.SERVICE_RAS_NAME = $SERVICE_RAS_NAME
-        $settings.LOG_FILE = $LOG_FILE
-        $settings.TEMP_PATH = $TEMP_PATH
-        $settings.CNTX_PATH = $CNTX_PATH
-        $settings.PFL_PATH = $PFL_PATH
-        $settings | Export-Csv "C:\scripts\Pode\settings.csv" -Encoding utf8 -NoTypeInformation -Delimiter ";"
+        # save to json
+        Lock-PodeObject -ScriptBlock {
+            $value = (Get-PodeState -Name '1cdata')
+            $state:1cdata = @{'LOG_FILE' = $LOG_FILE; 'SERVICE_1C_NAME' = $SERVICE_1C_NAME;
+                               'SERVICE_RAS_NAME' = $SERVICE_RAS_NAME; 'TEMP_PATH' = $TEMP_PATH;
+                               'CNTX_PATH' = $CNTX_PATH; 'PFL_PATH' = $PFL_PATH}
+            Save-PodeState -Path './1cstate.json'
+        }
+        
         #start restarting
         Add-Content -Path "$TEMP_PATH\$LOG_FILE" "stop  $(Get-Date)"
         Stop-Service -Name $SERVICE_1C_NAME
@@ -81,4 +81,17 @@
         #Complete restarting
         Move-PodeResponseUrl -Url '/restart-1c'
     }
+    # login page
+    Add-PodeRoute -Method Get -Path '/login' -Authentication 'WinAuth' -Login -ScriptBlock {
+        Write-PodeViewResponse -Path 'auth-login' -FlashMessages
+    }
+    # loginning
+    Add-PodeRoute -Method Post -Path '/login' -Authentication 'WinAuth' -Login
+
+    Add-PodeRoute -Method Get -Path '/' -Authentication 'WinAuth' -Login -ScriptBlock {
+        Write-PodeViewResponse -Path 'admin' -FlashMessages
+    }
+
 }
+
+
