@@ -13,10 +13,10 @@
 	    <p style="color:red">$($data.message)</p>
 	    <table>
 		<tr>
-			<th>Display Name</th>
-			<th>Name</th>
-			<th>Status</th>
-		</tr>
+				<th>Display Name</th>
+				<th>Name</th>
+				<th>Status</th>
+			</tr>
 		$(foreach ($service in $data.services) {
 		"<tr>
 			<td>$($service.DisplayName)</td>

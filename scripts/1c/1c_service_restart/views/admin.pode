@@ -1,6 +1,7 @@
 <html>
     <head>
-        <title>Pode - Главная</title>
+        <title>Pode - Главная страница</title>
+        <!--- Стили, чтобы у таблицы отображались границы --->
 		<style>
 			table, th, td {
 			  border: 1px solid black;
@@ -10,7 +11,15 @@
 		</style>
     </head>
     <body>
-		<a href="/ping">Ping</a><br>
-		<a href="/restart-1c">Рестарт сервера 1C с очисткой временных файлов.</a>
+	<main>
+	<nav>
+	</nav>
+	<section>
+		<a href="/ping"><h3>Ping</h3></a><br>
+	</section>
+	<section>
+		<a href="/restart-1c"><h3>Рестарт сервера 1C с очисткой временных файлов.</h3></a><br>
+	</section>
+	</main>
     </body>
 </html>
