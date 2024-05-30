@@ -1,5 +1,5 @@
-$ad_groups = @('1c_admins')
-$ad_users = @('bobs')
+$ad_groups = @('<ad-group>')
+$ad_users = @('<ad-user>')
 Import-Module -Name ActiveDirectory
 
 Start-PodeServer {
